@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+    <meta name="theme-color" content="#0f172a">
+    <title>JauMach! - Split your Receipt smartly</title>
+
+    <!-- SEO & Hosting Readiness Meta Tags -->
+    <meta name="description"
+        content="Divide cuentas de restaurantes escaneando la boleta. Escáner OCR inteligente y cálculo de propinas e IGV incorporado.">
+    <meta name="keywords" content="split bill, receipt scanner, OCR, dividir cuenta, propinas, IGV">
+    <meta name="author" content="12 Development">
+    <meta property="og:title" content="JauMach!">
+    <meta property="og:description" content="Escanea y divide la cuenta entre amigos con Inteligencia Artificial.">
+    <meta property="og:type" content="website">
+
+    <!-- Google AdSense Integration Tag (Replace 'ca-pub-XXXXXXXXXXXXX' with actual publisher ID when publishing) -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-0000000000000000"
+        crossorigin="anonymous"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        background: '#0f172a', surface: '#1e293b',
+                        primary: '#3b82f6', accent: '#22c55e',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <!-- Plugin para Pinch Zoom y Paneo en Mobile nativo pero para web -->
+    <script src="https://unpkg.com/panzoom@9.4.0/dist/panzoom.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: contain;
+        }
+
+        ::-webkit-scrollbar {
+            display: none;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s forwards;
+        }
+
+        .slide-up {
+            animation: slideUp 0.5s forwards;
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            0% {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .scale-pop {
+            animation: scalePop 0.25s forwards;
+        }
+
+        @keyframes scalePop {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.08);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        /* Critical Fix for iOS flexbox specificity overriding standard .hidden */
+        .force-hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body class="bg-background text-slate-100 min-h-[100dvh] flex flex-col relative overflow-hidden antialiased">
+    <header
+        class="fixed top-0 inset-x-0 h-16 bg-background/80 backdrop-blur-lg flex items-center justify-center z-50 border-b border-surface/50 shadow-sm pointer-events-auto">
+        <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                    d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z">
+                </path>
+            </svg>
+            JauMach!
+        </h1>
+    </header>
+
+    <main class="flex-1 w-full relative pt-16" style="min-height: 100dvh;">
+
+        <!-- Screen 1: Welcome -->
+        <div id="welcome-screen" class="w-full min-h-[100dvh] overflow-y-auto fade-in">
+
+            <!-- Ad Banner TOP -->
+            <div class="w-full flex justify-center items-center bg-surface/30 border-b border-white/5 py-2 px-4">
+                <!-- Replace with actual AdSense ad unit -->
+                <div
+                    class="w-full max-w-sm h-[60px] bg-white/5 rounded-lg flex items-center justify-center border border-white/5">
+                    <span class="text-[10px] text-slate-600 uppercase tracking-widest">Advertisement</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col items-center py-10 px-6 pb-28 text-center w-full max-w-sm mx-auto">
+                <div class="relative mb-6 group">
+                    <div class="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse"></div>
+                    <div
+                        class="relative w-28 h-28 bg-surface rounded-full flex items-center justify-center border border-white/5 shadow-2xl">
+                        <svg class="w-12 h-12 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z">
+                            </path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <h2 class="text-3xl font-bold mb-3 text-white tracking-tight">Captura tu boleta</h2>
+                <p class="text-slate-400 mb-10 text-base leading-relaxed w-full">Extraemos subtotales y totales. Haz
+                    zoom para mayor precisión.</p>
+
+                <button id="start-camera-btn"
+                    class="relative overflow-hidden group w-full px-6 py-4 bg-primary hover:bg-blue-600 active:bg-blue-700 text-white font-semibold rounded-2xl shadow-lg shadow-primary/25 transition-all transform active:scale-[0.97] flex items-center justify-center gap-3">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z">
+                        </path>
+                    </svg>
+                    <span class="text-lg">Abrir Cámara</span>
+                </button>
+
+                <label for="fallback-upload"
+                    class="mt-4 w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl border border-white/15 bg-white/5 hover:bg-white/10 active:bg-white/10 active:scale-[0.97] text-slate-200 font-semibold text-base cursor-pointer transition-all transform">
+                    <svg class="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <span>Sube una foto</span>
+                    <input type="file" id="fallback-upload" accept="image/*" class="hidden">
+                </label>
+
+                <!-- SEO FAQ -->
+                <div class="mt-14 w-full text-left">
+                    <h3 class="text-sm font-bold text-slate-400 mb-4 px-2 uppercase tracking-wider text-center">¿Cómo
+                        funciona JauMach!?</h3>
+                    <div class="space-y-3">
+                        <details
+                            class="group bg-surface/50 border border-white/5 rounded-xl overflow-hidden [&_summary::-webkit-details-marker]:hidden">
+                            <summary
+                                class="flex items-center justify-between cursor-pointer p-4 font-medium text-slate-200 hover:bg-white/5 transition-colors">
+                                <span>¿Qué es esta calculadora de boletas?</span>
+                                <span class="transition group-open:rotate-180"><svg fill="none" height="24"
+                                        stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                                        stroke-width="1.5" viewBox="0 0 24 24" width="24">
+                                        <path d="M6 9l6 6 6-6"></path>
+                                    </svg></span>
+                            </summary>
+                            <div class="p-4 pt-0 text-sm text-slate-400 leading-relaxed border-t border-white/5">
+                                JauMach es una herramienta web inteligente (OCR Scanner) que te permite tomarle una foto
+                                a la boleta del restaurante y extraer automáticamente los precios. Funciona dividiendo
+                                la cuenta entre varios amigos usando colores, y calculando propinas (tips) e impuestos
+                                (IGV) justos por persona al instante, sin necesidad de descargar una app.
+                            </div>
+                        </details>
+                        <details
+                            class="group bg-surface/50 border border-white/5 rounded-xl overflow-hidden [&_summary::-webkit-details-marker]:hidden">
+                            <summary
+                                class="flex items-center justify-between cursor-pointer p-4 font-medium text-slate-200 hover:bg-white/5 transition-colors">
+                                <span>¿Cómo calculo la propina o el IGV?</span>
+                                <span class="transition group-open:rotate-180"><svg fill="none" height="24"
+                                        stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                                        stroke-width="1.5" viewBox="0 0 24 24" width="24">
+                                        <path d="M6 9l6 6 6-6"></path>
+                                    </svg></span>
+                            </summary>
+                            <div class="p-4 pt-0 text-sm text-slate-400 leading-relaxed border-t border-white/5">
+                                Una vez que escaneas el recibo, selecciona los consumos de cada persona usando nuestra
+                                paleta multi-color. En la barra inferior podrás agregar +18% de IGV o seleccionar un
+                                porcentaje de propina (10%, 15% o un monto personalizado).
+                            </div>
+                        </details>
+                        <details
+                            class="group bg-surface/50 border border-white/5 rounded-xl overflow-hidden [&_summary::-webkit-details-marker]:hidden">
+                            <summary
+                                class="flex items-center justify-between cursor-pointer p-4 font-medium text-slate-200 hover:bg-white/5 transition-colors">
+                                <span>¿Es privada mi información?</span>
+                                <span class="transition group-open:rotate-180"><svg fill="none" height="24"
+                                        stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                                        stroke-width="1.5" viewBox="0 0 24 24" width="24">
+                                        <path d="M6 9l6 6 6-6"></path>
+                                    </svg></span>
+                            </summary>
+                            <div class="p-4 pt-0 text-sm text-slate-400 leading-relaxed border-t border-white/5">
+                                Sí, totalmente. Todo el reconocimiento óptico de caracteres se ejecuta localmente en el
+                                procesador de tu celular. Las fotos de tus boletas nunca se suben a ningún servidor.
+                            </div>
+                        </details>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Ad Banner BOTTOM -->
+            <div class="w-full flex justify-center items-center bg-surface/30 border-t border-white/5 py-4 px-4">
+                <!-- Replace with actual AdSense ad unit -->
+                <div
+                    class="w-full max-w-sm h-[90px] bg-white/5 rounded-lg flex items-center justify-center border border-white/5">
+                    <span class="text-[10px] text-slate-600 uppercase tracking-widest">Advertisement</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Screen 2: Live Camera (fixed overlay) -->
+        <div id="camera-screen" class="force-hidden fixed inset-0 pt-16 bg-black flex flex-col overflow-hidden z-40">
+            <video id="camera-stream" autoplay playsinline muted
+                style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></video>
+            <div
+                style="position:absolute;inset:0;pointer-events:none;border:1px solid rgba(255,255,255,0.2);margin:1rem;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,0.4);">
+                <div
+                    style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:rgba(255,255,255,0.5);font-size:0.875rem;">
+                    Encuadra los precios al lado derecho</div>
+            </div>
+            <div
+                style="position:absolute;bottom:2rem;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:1.5rem;z-index:10;">
+                <button id="cancel-camera-btn"
+                    style="width:3rem;height:3rem;background:rgba(30,41,59,0.8);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;border:none;cursor:pointer;">
+                    <svg style="width:1.5rem;height:1.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+                <button id="capture-btn"
+                    style="width:5rem;height:5rem;background:white;border-radius:50%;border:6px solid #cbd5e1;cursor:pointer;"></button>
+                <div style="width:3rem;height:3rem;"></div>
+            </div>
+        </div>
+
+        <!-- Screen 3: Loading OCR (fixed overlay) -->
+        <div id="loading-screen"
+            class="force-hidden fixed inset-0 pt-16 bg-background flex flex-col items-center justify-center p-6 text-center z-[60]">
+            <div class="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p class="text-white text-lg font-medium tracking-tight">Procesando imagen...</p>
+            <p class="text-slate-400 text-sm mt-3 max-w-[280px]" id="loading-text">Buscando precios con I.A. Esto puede
+                tomar unos segundos.</p>
+        </div>
+
+        <!-- Screen 4: Canvas (fixed overlay) -->
+        <div id="canvas-screen"
+            class="force-hidden fixed inset-0 pt-16 bg-[#050505] flex flex-col overflow-hidden z-40">
+            <div id="user-palette"
+                style="position:absolute;top:4rem;left:0;right:0;display:flex;justify-content:center;gap:0.75rem;z-index:20;">
+            </div>
+            <div id="pz-wrapper"
+                style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;touch-action:none;">
+                <canvas id="receipt-canvas"
+                    style="display:block;touch-action:none;transform-origin:center center;"></canvas>
+            </div>
+            <div
+                style="position:absolute;top:5.5rem;left:0;right:0;display:flex;justify-content:center;pointer-events:none;z-index:10;">
+                <span
+                    style="background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);color:rgba(255,255,255,0.8);padding:0.375rem 0.75rem;border-radius:9999px;font-size:0.75rem;">Pellizca
+                    para Zoom 🔍</span>
+            </div>
+
+            <!-- Discount Banner -->
+            <div id="discount-banner" style="display:none;position:absolute;bottom:8rem;left:1rem;right:1rem;z-index:30;
+                       background:rgba(15,23,42,0.97);backdrop-filter:blur(16px);
+                       border:1px solid rgba(251,191,36,0.4);border-radius:20px;padding:1rem 1.25rem;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+                    <div>
+                        <span
+                            style="font-size:0.65rem;color:#fbbf24;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;">Descuento
+                            detectado 💸</span>
+                        <div style="color:white;font-size:1.1rem;font-weight:700;margin-top:2px;">
+                            S/ <span id="discount-amount-display">0.00</span>
+                        </div>
+                    </div>
+                    <button id="dismiss-discount-btn"
+                        style="width:2rem;height:2rem;background:rgba(255,255,255,0.05);border:none;border-radius:50%;color:rgba(255,255,255,0.5);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+                </div>
+                <p style="color:rgba(148,163,184,1);font-size:0.75rem;margin-bottom:0.75rem;">¿Cuántos comensales
+                    comparten el descuento?</p>
+                <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
+                    <button id="diners-minus-btn"
+                        style="width:2.5rem;height:2.5rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:white;font-size:1.2rem;font-weight:700;cursor:pointer;">−</button>
+                    <span id="diners-count"
+                        style="color:white;font-size:1.4rem;font-weight:800;min-width:2rem;text-align:center;">3</span>
+                    <button id="diners-plus-btn"
+                        style="width:2.5rem;height:2.5rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:white;font-size:1.2rem;font-weight:700;cursor:pointer;">+</button>
+                    <div style="flex:1;text-align:right;color:rgba(148,163,184,1);font-size:0.75rem;">
+                        Mi descuento: <strong style="color:#fbbf24;">S/ <span
+                                id="my-discount-preview">0.00</span></strong>
+                    </div>
+                </div>
+                <button id="apply-discount-btn"
+                    style="width:100%;padding:0.7rem;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:12px;color:white;font-weight:700;font-size:0.9rem;cursor:pointer;">
+                    ✓ Aplicar descuento a mi cuenta
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Welcome Screen Floating Footer -->
+    <footer id="welcome-footer" class="fixed bottom-0 inset-x-0 z-30 flex justify-center items-center py-2 px-4"
+        style="background:linear-gradient(to top, rgba(10,14,23,0.97) 70%, transparent);">
+        <p class="text-[11px] text-slate-500/60 text-center leading-relaxed">
+            Crafteado por Istav Nile en 12 Development.&nbsp;
+            Los bugs son solo funciones no documentadas ☠️
+        </p>
+    </footer>
+
+
+    <!-- Total Bar (Enhanced with IGV/Propina) -->
+    <div id="total-bar" class="force-hidden fixed bottom-4 inset-x-4 z-50 slide-up pointer-events-none">
+        <div
+            class="bg-surface/95 backdrop-blur-2xl border border-white/10 rounded-[28px] p-5 shadow-2xl pointer-events-auto flex flex-col gap-4">
+
+            <!-- Top Row: Total & Reset -->
+            <div class="flex items-center justify-between">
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-primary font-bold uppercase tracking-widest mb-0.5">Total a
+                        Pagar</span>
+                    <div class="flex items-baseline gap-1" id="total-amount-container">
+                        <span class="text-2xl font-bold text-white tracking-tight">S/</span>
+                        <span class="text-4xl font-extrabold text-white tracking-tighter" id="total-amount">0.00</span>
+                    </div>
+                </div>
+
+                <button onclick="resetApp()"
+                    class="w-12 h-12 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-full flex items-center justify-center active:scale-95 transition-all border border-white/5">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Discount + Diner Count Row -->
+            <div class="flex items-center gap-2 pt-3 border-t border-white/5">
+                <div class="flex flex-col flex-1">
+                    <span class="text-[9px] text-amber-400 font-bold uppercase tracking-widest mb-1">Descuento
+                        mesa</span>
+                    <div class="flex items-center bg-black/30 border border-white/10 rounded-xl overflow-hidden">
+                        <span class="text-slate-500 text-xs pl-2 pr-1">S/</span>
+                        <input id="discount-input" type="number" inputmode="decimal" placeholder="0.00" min="0"
+                            step="0.01"
+                            style="background:transparent;border:none;outline:none;color:white;font-size:0.9rem;font-weight:600;width:100%;padding:0.5rem 0.5rem 0.5rem 0;appearance:textfield;-moz-appearance:textfield;"
+                            oninput="updateTotalDisplay()">
+                    </div>
+                </div>
+                <div class="flex flex-col" style="min-width: 6rem;">
+                    <span class="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-1">Comensales</span>
+                    <div class="flex items-center bg-black/30 border border-white/10 rounded-xl overflow-hidden">
+                        <button id="diner-minus" onclick="changeDiners(-1)"
+                            style="background:transparent;border:none;color:rgba(148,163,184,1);font-size:1.1rem;font-weight:700;padding:0.4rem 0.5rem;cursor:pointer;">−</button>
+                        <span id="diner-count-display"
+                            style="color:white;font-weight:700;font-size:0.95rem;min-width:1.5rem;text-align:center;">3</span>
+                        <button id="diner-plus" onclick="changeDiners(1)"
+                            style="background:transparent;border:none;color:rgba(148,163,184,1);font-size:1.1rem;font-weight:700;padding:0.4rem 0.5rem;cursor:pointer;">+</button>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end" style="min-width:3.5rem;">
+                    <span class="text-[9px] text-amber-400 font-bold uppercase tracking-widest mb-1">Mi parte</span>
+                    <span id="my-discount-share" style="color:#fbbf24;font-weight:700;font-size:0.85rem;">-S/0.00</span>
+                </div>
+            </div>
+
+            <!-- Bottom Row: Controls -->
+            <div class="flex items-center gap-3 pt-3 border-t border-white/5">
+
+                <!-- Toggle IGV (18%) -->
+                <button id="toggle-igv-btn"
+                    class="flex-1 py-2.5 px-3 rounded-xl border border-white/10 bg-black/20 text-slate-400 text-sm font-medium flex items-center justify-center gap-2 transition-all active:scale-95">
+                    <div class="w-4 h-4 rounded-full border-2 border-slate-500 flex items-center justify-center"
+                        id="igv-check">
+                        <!-- Icon injected via JS when active -->
+                    </div>
+                    +18% IGV
+                </button>
+
+                <!-- Propina / Tip Selector -->
+                <div class="flex-1 bg-black/20 border border-white/10 rounded-xl flex items-center overflow-hidden">
+                    <button id="tip-0-btn"
+                        class="flex-1 py-2.5 text-sm font-medium transition-colors bg-primary text-white">0%</button>
+                    <div class="w-px h-full bg-white/5"></div>
+                    <button id="tip-10-btn"
+                        class="flex-1 py-2.5 text-sm font-medium text-slate-400 hover:text-white transition-colors">10%</button>
+                    <div class="w-px h-full bg-white/5"></div>
+                    <button id="tip-15-btn"
+                        class="flex-1 py-2.5 text-sm font-medium text-slate-400 hover:text-white transition-colors">15%</button>
+                    <div class="w-px h-full bg-white/5"></div>
+                    <button id="tip-custom-btn"
+                        class="flex-1 py-2.5 text-sm font-medium text-slate-400 hover:text-white transition-colors">S/..</button>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let OCR_DATA = [];
+        let imageObj = null;
+        const selectedItemsMap = new Map(); // ITEM_ID -> HEX_COLOR
+        let localMediaStream = null;
+        let canvasPanZoomInstance = null;
+
+        // User Palette Constants
+        const USER_COLORS = ['#3b82f6', '#22c55e', '#f97316', '#a855f7', '#ec4899'];
+        let activeColor = USER_COLORS[0];
+
+        // State variables for calculations
+        let applyIGV = false;
+        let selectedTipPercent = 0; // 0, 10, or 15
+        let customTipAmount = 0;    // Absolute $ tip (overrides percent)
+
+        // Discount state
+        let detectedDiscount = 0;         // Raw value from OCR (e.g. 15.00)
+        let appliedDiscountPerDiner = 0;  // Amount to subtract from this user's total
+        let discountDiners = 3;           // Default diner count
+
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const welcomeFooter = document.getElementById('welcome-footer');
+        const cameraScreen = document.getElementById('camera-screen');
+        const loadingScreen = document.getElementById('loading-screen');
+        const canvasScreen = document.getElementById('canvas-screen');
+        const video = document.getElementById('camera-stream');
+        const totalBar = document.getElementById('total-bar');
+        const canvas = document.getElementById('receipt-canvas');
+        const ctx = canvas.getContext('2d');
+        const loadingText = document.getElementById('loading-text');
+        const totalAmountEl = document.getElementById('total-amount');
+        const totalAmountContainer = document.getElementById('total-amount-container');
+        const userPalette = document.getElementById('user-palette');
+
+        // Init User Palette Buttons
+        USER_COLORS.forEach(color => {
+            const btn = document.createElement('button');
+            btn.className = `user-color-btn w-9 h-9 sm:w-11 sm:h-11 rounded-full border-[3px] focus:outline-none transition-all duration-300 shadow-xl ${color === activeColor ? 'scale-[1.15] border-white' : 'border-transparent opacity-50 hover:opacity-100'}`;
+            btn.style.backgroundColor = color;
+            btn.addEventListener('click', () => {
+                activeColor = color;
+                document.querySelectorAll('.user-color-btn').forEach(b => {
+                    b.classList.remove('scale-[1.15]', 'border-white');
+                    b.classList.add('border-transparent', 'opacity-50');
+                });
+                btn.classList.add('scale-[1.15]', 'border-white');
+                btn.classList.remove('border-transparent', 'opacity-50');
+                updateTotalDisplay();
+            });
+            userPalette.appendChild(btn);
+        });
+
+        // IGV Toggle Logic
+        const toggleIgvBtn = document.getElementById('toggle-igv-btn');
+        const igvCheckIcon = document.getElementById('igv-check');
+        toggleIgvBtn.addEventListener('click', () => {
+            applyIGV = !applyIGV;
+            if (applyIGV) {
+                toggleIgvBtn.classList.replace('bg-black/20', 'bg-accent/20');
+                toggleIgvBtn.classList.replace('text-slate-400', 'text-accent');
+                toggleIgvBtn.classList.replace('border-white/10', 'border-accent/30');
+                igvCheckIcon.classList.replace('border-slate-500', 'border-accent');
+                igvCheckIcon.classList.add('bg-accent');
+                igvCheckIcon.innerHTML = `<svg class="w-2.5 h-2.5 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>`;
+            } else {
+                toggleIgvBtn.classList.replace('bg-accent/20', 'bg-black/20');
+                toggleIgvBtn.classList.replace('text-accent', 'text-slate-400');
+                toggleIgvBtn.classList.replace('border-accent/30', 'border-white/10');
+                igvCheckIcon.classList.replace('border-accent', 'border-slate-500');
+                igvCheckIcon.classList.remove('bg-accent');
+                igvCheckIcon.innerHTML = '';
+            }
+            updateTotalDisplay();
+        });
+
+        // Tip Selector Logic
+        const tipBtns = {
+            0: document.getElementById('tip-0-btn'),
+            10: document.getElementById('tip-10-btn'),
+            15: document.getElementById('tip-15-btn'),
+            custom: document.getElementById('tip-custom-btn')
+        };
+
+        function setTip(val, isCustom = false) {
+            if (isCustom) {
+                customTipAmount = val;
+                selectedTipPercent = 0;
+                Object.values(tipBtns).forEach(btn => {
+                    btn.classList.remove('bg-primary', 'text-white');
+                    btn.classList.add('text-slate-400');
+                });
+                tipBtns.custom.classList.add('bg-primary', 'text-white');
+                tipBtns.custom.classList.remove('text-slate-400');
+                tipBtns.custom.textContent = `+${customTipAmount.toFixed(2)}`;
+            } else {
+                selectedTipPercent = val;
+                customTipAmount = 0;
+                tipBtns.custom.textContent = 'S/..';
+                Object.keys(tipBtns).forEach(key => {
+                    if (key === 'custom') return;
+                    const btn = tipBtns[key];
+                    if (parseInt(key) === val) {
+                        btn.classList.add('bg-primary', 'text-white');
+                        btn.classList.remove('text-slate-400');
+                    } else {
+                        btn.classList.remove('bg-primary', 'text-white');
+                        btn.classList.add('text-slate-400');
+                    }
+                });
+            }
+            updateTotalDisplay();
+        }
+
+        tipBtns[0].addEventListener('click', () => setTip(0));
+        tipBtns[10].addEventListener('click', () => setTip(10));
+        tipBtns[15].addEventListener('click', () => setTip(15));
+        tipBtns.custom.addEventListener('click', () => {
+            const val = prompt('Ingresa el monto exacto de la propina general (ej. 5.50):', '');
+            if (val) {
+                const num = parseFloat(val.replace(',', '.'));
+                if (!isNaN(num) && num >= 0) setTip(num, true);
+            }
+        });
+
+        // Start Live Camera
+        document.getElementById('start-camera-btn').addEventListener('click', async () => {
+            // Show camera screen immediately so user sees UI transition
+            welcomeScreen.classList.add('force-hidden');
+            welcomeFooter.classList.add('force-hidden');
+            cameraScreen.classList.remove('force-hidden');
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
+                localMediaStream = stream;
+                video.srcObject = stream;
+
+            } catch (err) {
+                // Camera failed - revert screen
+                cameraScreen.classList.add('force-hidden');
+                welcomeScreen.classList.remove('force-hidden');
+                welcomeFooter.classList.remove('force-hidden');
+                alert('Cámara no disponible. Intente usar "Sube una foto".');
+            }
+        });
+
+        document.getElementById('cancel-camera-btn').addEventListener('click', () => {
+            stopCamera();
+            cameraScreen.classList.add('force-hidden');
+            welcomeScreen.classList.remove('force-hidden');
+            welcomeFooter.classList.remove('force-hidden');
+        });
+
+        document.getElementById('capture-btn').addEventListener('click', () => {
+            if (!localMediaStream) return;
+
+            const videoWidth = video.videoWidth;
+            const videoHeight = video.videoHeight;
+            const videoAspect = videoWidth / videoHeight;
+
+            const containerRect = video.getBoundingClientRect();
+            const containerAspect = containerRect.width / containerRect.height;
+
+            let renderW = videoWidth;
+            let renderH = videoHeight;
+            let offsetX = 0;
+            let offsetY = 0;
+
+            if (containerAspect > videoAspect) {
+                renderH = videoWidth / containerAspect;
+                offsetY = (videoHeight - renderH) / 2;
+            } else {
+                renderW = videoHeight * containerAspect;
+                offsetX = (videoWidth - renderW) / 2;
+            }
+
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = renderW;
+            tempCanvas.height = renderH;
+            const tCtx = tempCanvas.getContext('2d');
+
+            // 1. Draw pure real capture for visual rendering
+            tCtx.drawImage(video, offsetX, offsetY, renderW, renderH, 0, 0, renderW, renderH);
+            const rawDataURL = tempCanvas.toDataURL('image/jpeg', 0.95);
+
+            // 2. Pre-process to Black/White High Contrast for PERFECT OCR Engine accuracy (fixes 13->12 issues)
+            tCtx.filter = 'grayscale(100%) contrast(150%) brightness(120%) blur(0px)';
+            tCtx.drawImage(video, offsetX, offsetY, renderW, renderH, 0, 0, renderW, renderH);
+            const ocrDataURL = tempCanvas.toDataURL('image/jpeg', 0.95);
+
+            const img = new Image();
+            img.onload = () => {
+                imageObj = img; // Retain beautiful photo for user vision
+                stopCamera();
+                processOCR(ocrDataURL); // Send ugly contrasted photo to Tesseract
+            };
+            img.src = rawDataURL;
+        });
+
+        document.getElementById('fallback-upload').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    // Maximum safe pixel dimensions for mobile browsers
+                    const MAX_DIM = 2000;
+                    let renderW = img.width;
+                    let renderH = img.height;
+
+                    if (renderW > MAX_DIM || renderH > MAX_DIM) {
+                        const ratio = Math.min(MAX_DIM / renderW, MAX_DIM / renderH);
+                        renderW = Math.round(renderW * ratio);
+                        renderH = Math.round(renderH * ratio);
+                    }
+
+                    // 1. Create the primary visual image (optimized size)
+                    const visualCanvas = document.createElement('canvas');
+                    visualCanvas.width = renderW;
+                    visualCanvas.height = renderH;
+                    visualCanvas.getContext('2d').drawImage(img, 0, 0, renderW, renderH);
+
+                    // Almacenamos directamente el elemento Canvas como 'imageObj' para renderizado
+                    // Esto evita el bug de imágenes en blanco por recargas asíncronas del navegador
+                    imageObj = visualCanvas;
+
+                    // 2. Create the hyper-contrasted OCR version
+                    const ocrCanvas = document.createElement('canvas');
+                    ocrCanvas.width = renderW;
+                    ocrCanvas.height = renderH;
+                    const oCtx = ocrCanvas.getContext('2d');
+                    oCtx.filter = 'grayscale(100%) contrast(150%) brightness(120%)';
+                    oCtx.drawImage(visualCanvas, 0, 0, renderW, renderH);
+
+                    // Send to Tesseract
+                    processOCR(ocrCanvas.toDataURL('image/jpeg', 0.85));
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+
+            // Reset file input so user can pick the exact same file again if aborted
+            e.target.value = '';
+        });
+
+        function stopCamera() {
+            if (localMediaStream) {
+                localMediaStream.getTracks().forEach(track => track.stop());
+                localMediaStream = null;
+                video.srcObject = null;
+            }
+        }
+
+        async function processOCR(dataURL) {
+            welcomeScreen.classList.add('force-hidden');
+            cameraScreen.classList.add('force-hidden');
+            loadingScreen.classList.remove('force-hidden');
+            OCR_DATA = [];
+            detectedDiscount = 0;
+            appliedDiscountPerDiner = 0;
+
+            try {
+                const worker = await Tesseract.createWorker("spa", 1, {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            loadingText.innerText = `Leyendo texto... ${Math.round(m.progress * 100)}%`;
+                        } else {
+                            loadingText.innerText = `Cargando Recursos OCR...`;
+                        }
+                    }
+                });
+
+                const ret = await worker.recognize(dataURL);
+
+                // ── Helper: parse a raw OCR string into a float or null ──
+                function parseNum(raw) {
+                    if (!raw) return null;
+                    let s = raw.trim()
+                        .replace(/['""`$\n\s]/g, '')
+                        .replace(/^[sS]\/?/g, '')
+                        .replace(/^[oOlIiL](?=\d)/, '');
+                    if (!/^\d+([.,]\d{0,2})?$/.test(s)) return null;
+                    const sep = Math.max(s.lastIndexOf('.'), s.lastIndexOf(','));
+                    if (sep !== -1) {
+                        const after = s.slice(sep + 1);
+                        const before = s.slice(0, sep).replace(/[,.]/g, '');
+                        if (after.length === 0) s = before;
+                        else if (after.length <= 2) s = `${before}.${after}`;
+                        else s = before + after;
+                    }
+                    const v = parseFloat(s);
+                    return (!isNaN(v) && v > 0) ? v : null;
+                }
+
+                // ── Collect all individual word tokens with positions ──
+                const allWordData = ret.data.words.map(w => ({
+                    value: parseNum(w.text),
+                    textUp: w.text.toUpperCase(),
+                    x0: w.bbox.x0 / imageObj.width,
+                    x1: w.bbox.x1 / imageObj.width,
+                    y0: w.bbox.y0 / imageObj.height,
+                    y1: w.bbox.y1 / imageObj.height,
+                    yMid: (w.bbox.y0 + w.bbox.y1) / 2 / imageObj.height,
+                }));
+
+                const numWords = allWordData.filter(w => w.value !== null);
+                const textWords = allWordData;
+
+                // ── Group numeric words into Y-bands (one band = one receipt row) ──
+                const Y_GAP = 0.022;
+                numWords.sort((a, b) => a.yMid - b.yMid);
+                const rows = [];
+                for (const w of numWords) {
+                    const row = rows.find(r => Math.abs(r.yCenter - w.yMid) < Y_GAP);
+                    if (row) {
+                        row.words.push(w);
+                        row.yCenter = row.words.reduce((s, x) => s + x.yMid, 0) / row.words.length;
+                    } else {
+                        rows.push({ yCenter: w.yMid, words: [w] });
+                    }
+                }
+
+                // ── Process each row to extract CANT, P/U, TOTAL ──
+                let idCounter = 1;
+                for (const row of rows) {
+                    if (row.yCenter < 0.15) continue;
+                    row.words.sort((a, b) => a.x0 - b.x0);
+
+                    const isDiscountRow = textWords.some(w =>
+                        Math.abs(w.yMid - row.yCenter) < Y_GAP &&
+                        /DESCUENTO|DSCTO|DSCT/.test(w.textUp)
+                    );
+
+                    // TOTAL = rightmost numeric word in the right half of the image
+                    const rightWords = row.words.filter(w => w.x0 > 0.50);
+                    if (rightWords.length === 0) continue;
+                    const totalWord = rightWords[rightWords.length - 1];
+
+                    // CANT = leftmost small integer (1–99) in left 45% of image
+                    const cantWord = row.words.find(w =>
+                        w.x0 < 0.45 && w.value >= 1 && w.value <= 99 &&
+                        Number.isInteger(w.value)
+                    );
+                    const cant = cantWord ? Math.round(cantWord.value) : 1;
+
+                    // P/U = second-to-last right word, or derive from total/cant
+                    const puWord = rightWords.length >= 2 ? rightWords[rightWords.length - 2] : null;
+                    let priceUnit = puWord ? puWord.value : totalWord.value / cant;
+
+                    if (isDiscountRow) {
+                        if (totalWord.value > 0) detectedDiscount = totalWord.value;
+                        continue;
+                    }
+
+                    // ── Cross-validation: correct missing decimal point ──
+                    // Tesseract drops '.' → "8.00" reads as "800".
+                    // If total / priceUnit ≈ 100×cant, divide both by 100.
+                    let total = totalWord.value;
+                    if (priceUnit > 0 && cant > 0) {
+                        const ratio = total / priceUnit;
+                        if (Math.abs(ratio / cant - 100) < 20) total = total / 100;
+                        if (total > 0 && Math.abs(priceUnit / (total / cant) - 100) < 20) {
+                            priceUnit = priceUnit / 100;
+                        }
+                    }
+
+                    if (total < 0.5 || total > 9999) continue;
+
+                    const padX = 0.012, padY = 0.006;
+                    OCR_DATA.push({
+                        id: `ocr_${idCounter++}`,
+                        value: total, priceUnit, cant, selectedQty: 0,
+                        boundingPoly: {
+                            vertices: [
+                                { x: Math.max(0, totalWord.x0 - padX), y: Math.max(0, totalWord.y0 - padY) },
+                                { x: Math.min(1, totalWord.x1 + padX), y: Math.max(0, totalWord.y0 - padY) },
+                                { x: Math.min(1, totalWord.x1 + padX), y: Math.min(1, totalWord.y1 + padY) },
+                                { x: Math.max(0, totalWord.x0 - padX), y: Math.min(1, totalWord.y1 + padY) },
+                            ]
+                        }
+                    });
+                }
+
+                // ── Outlier filter: discard values > 20× median ──
+                if (OCR_DATA.length >= 3) {
+                    const vals = [...OCR_DATA.map(d => d.value)].sort((a, b) => a - b);
+                    const median = vals[Math.floor(vals.length / 2)];
+                    OCR_DATA = OCR_DATA.filter(d => d.value <= median * 20);
+                }
+
+                await worker.terminate();
+                loadingScreen.classList.add('force-hidden');
+                initCanvasScreen();
+
+            } catch (err) {
+                alert("Fallo el OCR: " + err);
+                loadingScreen.classList.add('force-hidden');
+                resetApp();
+            }
+        }
+
+        function initCanvasScreen() {
+            welcomeScreen.classList.add('force-hidden');
+            welcomeFooter.classList.add('force-hidden');
+            cameraScreen.classList.add('force-hidden');
+            loadingScreen.classList.add('force-hidden');
+            canvasScreen.classList.remove('force-hidden');
+
+            totalBar.classList.remove('force-hidden');
+            selectedItemsMap.clear();
+            applyIGV = false;
+            setTip(0);
+            appliedDiscountPerDiner = 0;
+
+            // Show discount banner if OCR found a discount row
+            const discountBanner = document.getElementById('discount-banner');
+            if (detectedDiscount > 0) {
+                document.getElementById('discount-amount-display').textContent = detectedDiscount.toFixed(2);
+                discountDiners = 3;
+                document.getElementById('diners-count').textContent = discountDiners;
+                document.getElementById('my-discount-preview').textContent = (detectedDiscount / discountDiners).toFixed(2);
+                discountBanner.style.display = 'block';
+            } else {
+                discountBanner.style.display = 'none';
+            }
+
+            updateTotalDisplay();
+            renderCanvas();
+            initPanZoom();
+        }
+
+        // ── Discount Banner Event Handlers ──
+        function updateDiscountPreview() {
+            const preview = (detectedDiscount / discountDiners).toFixed(2);
+            document.getElementById('my-discount-preview').textContent = preview;
+        }
+
+        document.getElementById('diners-minus-btn').addEventListener('click', () => {
+            if (discountDiners > 1) { discountDiners--; document.getElementById('diners-count').textContent = discountDiners; updateDiscountPreview(); }
+        });
+        document.getElementById('diners-plus-btn').addEventListener('click', () => {
+            discountDiners++; document.getElementById('diners-count').textContent = discountDiners; updateDiscountPreview();
+        });
+        document.getElementById('apply-discount-btn').addEventListener('click', () => {
+            appliedDiscountPerDiner = detectedDiscount / discountDiners;
+            document.getElementById('discount-banner').style.display = 'none';
+            updateTotalDisplay();
+        });
+        document.getElementById('dismiss-discount-btn').addEventListener('click', () => {
+            appliedDiscountPerDiner = 0;
+            document.getElementById('discount-banner').style.display = 'none';
+            updateTotalDisplay();
+        });
+
+        // Inicializa Pinch-to-Zoom y Pan sobre el Canvas
+        function initPanZoom() {
+            if (canvasPanZoomInstance) {
+                canvasPanZoomInstance.dispose();
+            }
+            canvasPanZoomInstance = panzoom(canvas, {
+                maxZoom: 5,
+                minZoom: 0.8,
+                bounds: true,
+                boundsPadding: 0.1,
+                smoothScroll: false,
+                onTouch: function (e) { return false; }
+            });
+            canvasPanZoomInstance.moveTo(0, 0);
+            canvasPanZoomInstance.zoomAbs(0, 0, 1);
+        }
+
+        function renderCanvas() {
+            if (!imageObj) return;
+
+            const windowAspect = window.innerHeight / window.innerWidth;
+            const imgAspect = imageObj.height / imageObj.width;
+
+            let displayWidth = window.innerWidth;
+            let displayHeight = displayWidth * imgAspect;
+
+            const dpr = window.devicePixelRatio || 1;
+
+            canvas.width = displayWidth * dpr;
+            canvas.height = displayHeight * dpr;
+
+            canvas.style.width = `${displayWidth}px`;
+            canvas.style.height = `${displayHeight}px`;
+
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            // Draw either the loaded imageObj or the visually scaled canvas we stored
+            if (imageObj instanceof HTMLCanvasElement || imageObj instanceof HTMLVideoElement || imageObj instanceof HTMLImageElement) {
+                ctx.drawImage(imageObj, 0, 0, displayWidth, displayHeight);
+            }
+
+            // Arreglo para registrar la posición de las pastillas dibujadas y evitar colisiones
+            const drawnBadges = [];
+
+            OCR_DATA.forEach(item => {
+                const minX = Math.min(...item.boundingPoly.vertices.map(v => v.x));
+                const maxX = Math.max(...item.boundingPoly.vertices.map(v => v.x));
+                const minY = Math.min(...item.boundingPoly.vertices.map(v => v.y));
+                const maxY = Math.max(...item.boundingPoly.vertices.map(v => v.y));
+
+                const px = minX * displayWidth;
+                const py = minY * displayHeight;
+                const pw = (maxX - minX) * displayWidth;
+                const ph = (maxY - minY) * displayHeight;
+
+                const isSelected = item.selectedQty > 0;
+                const assignedColor = isSelected ? selectedItemsMap.get(item.id) : null;
+
+                ctx.beginPath();
+                if (ctx.roundRect) ctx.roundRect(px, py, pw, ph, 4);
+                else ctx.rect(px, py, pw, ph);
+
+                if (isSelected) {
+                    ctx.fillStyle = assignedColor + '66';
+                    ctx.strokeStyle = assignedColor;
+                    ctx.lineWidth = 3;
+                    ctx.fill();
+                } else {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.0)';
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                    ctx.lineWidth = 2;
+                }
+                ctx.stroke();
+
+                // Badge label: show qty if item has >1 cant and partial selection
+                let textStr;
+                if (!isSelected) {
+                    textStr = item.value.toFixed(2);
+                } else if (item.selectedQty === item.cant) {
+                    // Full selection: show total
+                    textStr = item.cant > 1 ? `${item.cant}× ${item.priceUnit.toFixed(2)}` : item.value.toFixed(2);
+                } else {
+                    // Partial: show qty × unit price
+                    textStr = `${item.selectedQty}× ${item.priceUnit.toFixed(2)}`;
+                }
+
+                ctx.font = 'bold 15px Inter';
+                const tMetrics = ctx.measureText(textStr);
+                const tWidth = tMetrics.width;
+
+                let badgeX = px + pw + 8;
+                if (badgeX + tWidth + 20 > displayWidth) {
+                    badgeX = px - tWidth - 20;
+                }
+
+                let badgeY = py + (ph / 2) - 14;
+
+                // Anti-collision
+                let overlap = true;
+                let attempts = 0;
+                while (overlap && attempts < 15) {
+                    overlap = false;
+                    for (const db of drawnBadges) {
+                        if (!(badgeX > db.x + db.w || badgeX + tWidth + 14 < db.x || badgeY > db.y + db.h || badgeY + 28 < db.y)) {
+                            overlap = true;
+                            badgeY += 32;
+                            break;
+                        }
+                    }
+                    attempts++;
+                }
+                drawnBadges.push({ x: badgeX, y: badgeY, w: tWidth + 14, h: 28 });
+
+                ctx.beginPath();
+                if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, tWidth + 14, 28, 6);
+                else ctx.fillRect(badgeX, badgeY, tWidth + 14, 28);
+                ctx.fillStyle = isSelected ? assignedColor : 'rgba(15, 23, 42, 0.9)';
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(textStr, badgeX + 7, badgeY + 14);
+            });
+        }
+
+        let isDragging = false;
+        let clickStartX = 0;
+        let clickStartY = 0;
+
+        canvas.addEventListener('pointerdown', (e) => {
+            isDragging = false;
+            clickStartX = e.clientX;
+            clickStartY = e.clientY;
+        });
+
+        canvas.addEventListener('pointermove', (e) => {
+            if (Math.abs(e.clientX - clickStartX) > 5 || Math.abs(e.clientY - clickStartY) > 5) {
+                isDragging = true;
+            }
+        });
+
+        canvas.addEventListener('pointerup', (e) => {
+            if (isDragging) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const rawX = e.clientX - rect.left;
+            const rawY = e.clientY - rect.top;
+
+            const clickPoint = { x: rawX / rect.width, y: rawY / rect.height };
+            const displayWidth = rect.width;
+            const displayHeight = rect.height;
+
+            let itemClicked = null;
+            const padding = 30;
+
+            for (let i = OCR_DATA.length - 1; i >= 0; i--) {
+                const itemBox = OCR_DATA[i].boundingPoly.vertices;
+                const px = clickPoint.x * displayWidth;
+                const py = clickPoint.y * displayHeight;
+                const minX = Math.min(...itemBox.map(v => v.x)) * displayWidth;
+                const maxX = Math.max(...itemBox.map(v => v.x)) * displayWidth;
+                const minY = Math.min(...itemBox.map(v => v.y)) * displayHeight;
+                const maxY = Math.max(...itemBox.map(v => v.y)) * displayHeight;
+
+                if (px >= (minX - padding) && px <= (maxX + padding) &&
+                    py >= (minY - padding) && py <= (maxY + padding)) {
+                    itemClicked = OCR_DATA[i];
+                    break;
+                }
+            }
+
+            if (itemClicked) {
+                const alreadyOwned = selectedItemsMap.get(itemClicked.id) === activeColor;
+
+                if (!alreadyOwned) {
+                    // First tap: assign to this user at full quantity
+                    itemClicked.selectedQty = itemClicked.cant;
+                    selectedItemsMap.set(itemClicked.id, activeColor);
+                } else if (itemClicked.cant > 1 && itemClicked.selectedQty > 1) {
+                    // Already selected with qty > 1: decrement
+                    itemClicked.selectedQty -= 1;
+                } else {
+                    // Already at qty 1 or cant=1: deselect
+                    itemClicked.selectedQty = 0;
+                    selectedItemsMap.delete(itemClicked.id);
+                }
+
+                if (navigator.vibrate) navigator.vibrate([10, 50, 10]);
+                renderCanvas();
+                updateTotalDisplay();
+            }
+        });
+
+        // ── Manual Discount & Diners ──
+        let manualDiners = 3;
+        function changeDiners(delta) {
+            manualDiners = Math.max(1, manualDiners + delta);
+            document.getElementById('diner-count-display').textContent = manualDiners;
+            updateTotalDisplay();
+        }
+
+        function updateTotalDisplay() {
+            let activeColorSum = 0;
+            let grandTotalBaseSum = 0;
+
+            OCR_DATA.forEach(item => {
+                const ownerColor = selectedItemsMap.get(item.id);
+                if (!ownerColor) return;
+                const effectiveValue = item.selectedQty * item.priceUnit;
+                grandTotalBaseSum += effectiveValue;
+                if (ownerColor === activeColor) {
+                    activeColorSum += effectiveValue;
+                }
+            });
+
+            // IGV (18%)
+            let igvAmount = 0;
+            if (applyIGV && activeColorSum > 0) {
+                igvAmount = activeColorSum * 0.18;
+            }
+
+            // Propina
+            let tipAmount = 0;
+            if (selectedTipPercent > 0 && activeColorSum > 0) {
+                tipAmount = activeColorSum * (selectedTipPercent / 100);
+            } else if (customTipAmount > 0 && grandTotalBaseSum > 0) {
+                tipAmount = customTipAmount * (activeColorSum / grandTotalBaseSum);
+            }
+
+            // Manual discount split across diners
+            const discountInputEl = document.getElementById('discount-input');
+            const rawDiscount = parseFloat(discountInputEl ? discountInputEl.value : '0') || 0;
+            const myDiscountShare = rawDiscount > 0 ? rawDiscount / manualDiners : 0;
+
+            // Update "Mi parte" display
+            const myDiscountShareEl = document.getElementById('my-discount-share');
+            if (myDiscountShareEl) {
+                myDiscountShareEl.textContent = rawDiscount > 0 ? `-S/${myDiscountShare.toFixed(2)}` : '-S/0.00';
+            }
+
+            let finalTotal = activeColorSum + igvAmount + tipAmount - myDiscountShare;
+            if (finalTotal < 0) finalTotal = 0;
+
+            totalAmountContainer.classList.remove('scale-pop');
+            void totalAmountContainer.offsetWidth;
+            totalAmountContainer.classList.add('scale-pop');
+
+            totalAmountEl.textContent = finalTotal.toFixed(2);
+            totalAmountEl.style.color = activeColorSum > 0 ? activeColor : '#ffffff';
+        }
+
+        function resetApp() {
+            imageObj = null;
+            selectedItemsMap.clear();
+            document.getElementById('fallback-upload').value = '';
+            const di = document.getElementById('discount-input');
+            if (di) di.value = '';
+            manualDiners = 3;
+            document.getElementById('diner-count-display').textContent = '3';
+
+            welcomeScreen.classList.remove('force-hidden');
+            welcomeFooter.classList.remove('force-hidden');
+            cameraScreen.classList.add('force-hidden');
+            loadingScreen.classList.add('force-hidden');
+            canvasScreen.classList.add('force-hidden');
+
+            totalBar.classList.add('force-hidden');
+            OCR_DATA = [];
+            detectedDiscount = 0;
+            appliedDiscountPerDiner = 0;
+            document.getElementById('discount-banner').style.display = 'none';
+
+            if (canvasPanZoomInstance) {
+                canvasPanZoomInstance.dispose();
+                canvasPanZoomInstance = null;
+            }
+        }
+
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                if (!canvasScreen.classList.contains('force-hidden')) {
+                    // Guardamos memoria interna d panzoom
+                    renderCanvas();
+                }
+            }, 100);
+        });
+    </script>
+</body>
+
+</html>
